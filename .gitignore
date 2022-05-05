@@ -1,0 +1,8 @@
+virt/
+config/
+.idea/
+__pycache__/
+log/
+climate_co2.db
+climate_co3.db
+
