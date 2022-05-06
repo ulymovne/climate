@@ -5,7 +5,7 @@ import configparser
 import telebot
 import threading
 
-BASE_NAME = 'climate_co3.db'
+BASE_NAME = 'climate_co2.db'
 
 """ 
 DataBase
