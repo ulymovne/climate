@@ -2,8 +2,10 @@ import sqlite3
 from socket import *
 from datetime import datetime
 import configparser
+import telebot
+import threading
 
-BASE_NAME = 'climate_co2.db'
+BASE_NAME = 'climate_co3.db'
 
 """ 
 DataBase
@@ -22,7 +24,21 @@ def add_db(data_base=BASE_NAME, api="", value=0):
 
         except Exception as e:
             print('Connection error:\n\t', e)
-            pass
+
+
+def get_data(data_base=BASE_NAME):
+    value = [('0', 0)]
+    try:
+        with sqlite3.connect(data_base) as db:
+            cur = db.cursor()
+            query = f""" SELECT date_str, co2 FROM co_data ORDER BY id DESC LIMIT 1 """
+            cur.execute(query)
+            value = cur.fetchall()
+
+    except Exception as e:
+        print('Connection error:\n\t', e)
+    return value[0]
+
 
 """ 
 Server
@@ -72,6 +88,30 @@ class Sever:
     def sender(self, user, text):
         user.send(text.encode('utf-8'))
 
+"""
+Telegram
+"""
+def telegram(token:str):
+    bot = telebot.TeleBot(token)
+
+    keyboard = telebot.types.ReplyKeyboardMarkup(True)
+    keyboard.row('/get')
+
+    def send(id, text):
+        bot.send_message(id, text, reply_markup=keyboard)
+
+    @bot.message_handler(commands=['get'])
+    def answer(message):
+        data = get_data()
+        send(message.chat.id, data[0] + ' value: ' + str(data[1]))
+
+    @bot.message_handler(content_types=['text'])
+    def message_text(message):
+        send(message.chat.id, 'hi')
+
+    bot.polling(none_stop=True)
+
+
 conf = configparser.ConfigParser()
 conf.read('config/conf.ini')
 #time_zone = сколько часов +UTC
@@ -82,9 +122,10 @@ conf_parapms = {'base_name':conf['Database']['base_name'],
                 'time_zone':int(conf['Server']['time_zone']),
                 'tg_token':conf['Tg_bot']['token']}
 
+threading.Thread(target=telegram, args=(conf_parapms['tg_token'],)).start()
+
 Sever(conf_parapms['ip'], conf_parapms['port']).connect()
 
-"""
-Telegram
-"""
+
+
 
