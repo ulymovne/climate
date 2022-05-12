@@ -2,14 +2,17 @@ import sqlite3
 from socket import *
 from datetime import datetime
 import configparser
-import telebot
 import threading
+from telebot import types
+from telebot import TeleBot
 
 BASE_NAME = 'climate_co2.db'
 
 """ 
 DataBase
 """
+
+
 def add_db(data_base=BASE_NAME, api="", value=0):
     global conf_parapms
     if api == conf_parapms['api_base']:
@@ -43,6 +46,8 @@ def get_data(data_base=BASE_NAME):
 """ 
 Server
 """
+
+
 class Sever:
     def __init__(self, ip, port):
         self.ser = socket(AF_INET, SOCK_STREAM)
@@ -54,8 +59,8 @@ class Sever:
         while True:
             user, addr = self.ser.accept()
 
-            #!!!!!!!! записать в логи кто подключился
-            print('Client connected:\n\t', addr[0], ':',addr[1])
+            # !!!!!!!! записать в логи кто подключился
+            print('Client connected:\n\t', addr[0], ':', addr[1])
             self.lissen(user)
 
     def lissen(self, user):
@@ -88,44 +93,96 @@ class Sever:
     def sender(self, user, text):
         user.send(text.encode('utf-8'))
 
+
 """
 Telegram
 """
-def telegram(token:str):
-    bot = telebot.TeleBot(token)
 
-    keyboard = telebot.types.ReplyKeyboardMarkup(True)
-    keyboard.row('/get')
 
-    def send(id, text):
-        bot.send_message(id, text, reply_markup=keyboard)
+def telegram(token: str):
+    bot = TeleBot(token)
+
+    def set_commands():
+        commands = [
+            types.BotCommand(command="/get", description="Получить текущие показания"),
+            types.BotCommand(command="/polling", description="Включить опрос"),
+            types.BotCommand(command="/chart", description="Построить график"),
+            types.BotCommand(command="/alert", description="Включить алёртинг")
+        ]
+        bot.set_my_commands(commands)
+
+    def get_markup(markup_type: str):
+        markup = types.InlineKeyboardMarkup()
+        if markup_type == "pool":
+            b1 = types.InlineKeyboardButton('30 секунд', callback_data='pool_1')
+            b2 = types.InlineKeyboardButton('60 секунд', callback_data='pool_2')
+            b3 = types.InlineKeyboardButton('120 секунд', callback_data='pool_3')
+            markup.row(b1, b2, b3)
+        elif markup_type == "chart":
+            b1 = types.InlineKeyboardButton('За последние 24 часа', callback_data='chart_1')
+            b2 = types.InlineKeyboardButton('За последние 12 часов', callback_data='chart_2')
+            b3 = types.InlineKeyboardButton('За вчерашние сутки', callback_data='chart_3')
+            markup.row(b1, b2)
+            markup.row(b3)
+        elif markup_type == "alert":
+            b1 = types.InlineKeyboardButton('1000 едениц', callback_data='alert_1')
+            b2 = types.InlineKeyboardButton('1200 единиц', callback_data='alert_2')
+            b3 = types.InlineKeyboardButton('1400 единиц', callback_data='alert_3')
+            b4 = types.InlineKeyboardButton('1600 единиц', callback_data='alert_4')
+            markup.row(b1, b2)
+            markup.row(b3, b4)
+        back = types.InlineKeyboardButton('Отмена', callback_data='back_')
+        markup.row(back)
+        return markup
 
     @bot.message_handler(commands=['get'])
     def answer(message):
         data = get_data()
-        send(message.chat.id, data[0] + ' value: ' + str(data[1]))
+        bot.send_message(message.chat.id, data[0] + ', показания CO2: ' + str(data[1]))
 
-    @bot.message_handler(content_types=['text'])
-    def message_text(message):
-        send(message.chat.id, 'hi')
+    @bot.message_handler(commands=['polling'])
+    def answer(message):
+        bot.send_message(message.chat.id, 'Частота опроса:', reply_markup=get_markup('pool'))
 
+    @bot.message_handler(commands=['chart'])
+    def answer(message):
+        bot.send_message(message.chat.id, 'Какой график построить:', reply_markup=get_markup('chart'))
+
+    @bot.message_handler(commands=['alert'])
+    def answer(message):
+        bot.send_message(message.chat.id, 'Допустимые значения:', reply_markup=get_markup('alert'))
+
+    @bot.callback_query_handler(func=lambda call: True)
+    def handle(call):
+        markup_type, number = call.data.split("_")
+        if markup_type == 'pool':
+            # может тут перестать записывать в базу? и ограничить тайминг на 5-10 минут макс.
+            bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.id,
+                                  text=f"Опрос с частотой: {number}")
+        elif markup_type == 'chart':
+            bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.id,
+                                  text=f"Строим график: {number}")
+        elif markup_type == 'alert':
+            bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.id,
+                                  text=f"Запуск алерта: {number}")
+        elif markup_type == 'back':
+            bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.id, text="Отмена")
+        bot.answer_callback_query(call.id)
+
+    set_commands()
     bot.polling(none_stop=True)
 
 
 conf = configparser.ConfigParser()
 conf.read('config/conf.ini')
-#time_zone = сколько часов +UTC
-conf_parapms = {'base_name':conf['Database']['base_name'],
-                'api_base':conf['Database']['api_base'],
-                'ip':conf['Server']['ip'],
-                'port':int(conf['Server']['port']),
-                'time_zone':int(conf['Server']['time_zone']),
-                'tg_token':conf['Tg_bot']['token']}
+# time_zone = сколько часов +UTC
+conf_parapms = {'base_name': conf['Database']['base_name'],
+                'api_base': conf['Database']['api_base'],
+                'ip': conf['Server']['ip'],
+                'port': int(conf['Server']['port']),
+                'time_zone': int(conf['Server']['time_zone']),
+                'tg_token': conf['Tg_bot']['token']}
 
 threading.Thread(target=telegram, args=(conf_parapms['tg_token'],)).start()
 
 Sever(conf_parapms['ip'], conf_parapms['port']).connect()
-
-
-
-
