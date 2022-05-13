@@ -1,10 +1,11 @@
 import sqlite3
 from socket import *
-from datetime import datetime
+from datetime import datetime, timedelta
 import configparser
 import threading
-from telebot import types
-from telebot import TeleBot
+from telebot import types, TeleBot
+import chart as chr
+
 
 BASE_NAME = 'climate_co2.db'
 
@@ -12,15 +13,15 @@ BASE_NAME = 'climate_co2.db'
 DataBase
 """
 
-
 def add_db(data_base=BASE_NAME, api="", value=0):
     global conf_parapms
     if api == conf_parapms['api_base']:
         try:
             with sqlite3.connect(data_base) as db:
                 cur = db.cursor()
-                date_u = round(datetime.now().timestamp()) + 3600 * conf_parapms['time_zone']
-                date_str = datetime.fromtimestamp(date_u).strftime("%d.%m.%y %H:%M")
+                date_u = round(datetime.now().timestamp())
+                date_u_temp = date_u + 3600 * conf_parapms['time_zone']
+                date_str = datetime.fromtimestamp(date_u_temp).strftime("%d.%m.%y %H:%M")
                 query = f""" INSERT INTO co_data (date_str, date_u, co2) VALUES ("{date_str}",{date_u}, {value}) """
                 cur.execute(query)
                 print('Data updated')
@@ -46,7 +47,6 @@ def get_data(data_base=BASE_NAME):
 """ 
 Server
 """
-
 
 class Sever:
     def __init__(self, ip, port):
@@ -98,7 +98,6 @@ class Sever:
 Telegram
 """
 
-
 def telegram(token: str):
     bot = TeleBot(token)
 
@@ -110,6 +109,7 @@ def telegram(token: str):
             types.BotCommand(command="/alert", description="Включить алёртинг")
         ]
         bot.set_my_commands(commands)
+
 
     def get_markup(markup_type: str):
         markup = types.InlineKeyboardMarkup()
@@ -135,10 +135,30 @@ def telegram(token: str):
         markup.row(back)
         return markup
 
+
+    def set_chart(call, number):
+        date_start, date_end, title_chart = 0, 0, ''
+        if number == '1':
+            date_start = round((datetime.now()- timedelta(days=1)).timestamp())
+            date_end = round(datetime.now().timestamp())
+            title_chart = 'Показания СО2 за последние сутки'
+        elif number == '2':
+            date_start = round((datetime.now()- timedelta(hours=12)).timestamp())
+            date_end = round(datetime.now().timestamp())
+            title_chart = 'Показания СО2 за последние 12 часов'
+        elif number == '3':
+            cur_date = datetime.today()
+            date_start = round((cur_date.combine(cur_date.date(), cur_date.min.time()) - timedelta(days=1)).timestamp())
+            date_end = round((cur_date.combine(cur_date.date(), cur_date.min.time())).timestamp())
+            title_chart = 'Показания СО2 за вчерашние сутки'
+
+        bot.send_photo(chat_id=call.message.chat.id,
+                       photo=chr.get_chart(conf_parapms['base_name'], date_start, date_end, title_chart))
+
     @bot.message_handler(commands=['get'])
     def answer(message):
         data = get_data()
-        bot.send_message(message.chat.id, data[0] + ', показания CO2: ' + str(data[1]))
+        bot.send_message(message.chat.id, data[0] + ", показания CO2: *" + str(data[1]) + "*", parse_mode='Markdown')
 
     @bot.message_handler(commands=['polling'])
     def answer(message):
@@ -161,7 +181,8 @@ def telegram(token: str):
                                   text=f"Опрос с частотой: {number}")
         elif markup_type == 'chart':
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.id,
-                                  text=f"Строим график: {number}")
+                                  text=f"Строим график:")
+            set_chart(call, number)
         elif markup_type == 'alert':
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.id,
                                   text=f"Запуск алерта: {number}")
@@ -181,7 +202,8 @@ conf_parapms = {'base_name': conf['Database']['base_name'],
                 'ip': conf['Server']['ip'],
                 'port': int(conf['Server']['port']),
                 'time_zone': int(conf['Server']['time_zone']),
-                'tg_token': conf['Tg_bot']['token']}
+                'tg_token': conf['Tg_bot']['token'],
+                'alert': 0}
 
 threading.Thread(target=telegram, args=(conf_parapms['tg_token'],)).start()
 
