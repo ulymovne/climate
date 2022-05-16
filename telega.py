@@ -93,7 +93,7 @@ class TelegaBot(threading.Thread):
 
         @self.bot.message_handler(commands=['alert'])
         def answer(message):
-            self.bot.send_message(message.chat.id, 'Допустимые значения:', reply_markup=get_markup('alert'))
+            self.bot.send_message(message.chat.id, f'Выберете порог. Сейчас установлено: {self.alert}', reply_markup=get_markup('alert'))
 
         @self.bot.callback_query_handler(func=lambda call: True)
         def handle(call):

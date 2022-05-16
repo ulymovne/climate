@@ -58,3 +58,10 @@ def add_db(data_base:str, value=0):
 
     except Exception as e:
         print('Add to db - connection error:\n\t', e)
+
+def create_db(data_base):
+    pass
+
+if __name__ == "__main__":
+    # проверить что базы нет и создать ее, плюс записать в конф.ини название базы
+    create_db()
