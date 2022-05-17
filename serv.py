@@ -9,6 +9,7 @@ class Sever:
         self.ser.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         self.ser.bind((ip, port))
         self.ser.listen(3)
+        self.intrval_polling = None
 
     def connect(self):
         while True:
@@ -19,7 +20,11 @@ class Sever:
             self.lissen(user)
 
     def lissen(self, user):
-        self.sender(user, 'connected_ok')
+        if self.intrval_polling is None:
+            self.sender(user, 'connected_ok')
+        else:
+            self.sender(user, 'connected_'+str(self.intrval_polling))
+            self.intrval_polling = None
         is_work = True
         while is_work:
             try:

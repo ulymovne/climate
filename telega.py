@@ -4,8 +4,6 @@ from datetime import datetime, timedelta
 import chart as chr
 
 
-
-
 class TelegaBot(threading.Thread):
 
     def __init__(self, token, basename):
@@ -13,6 +11,7 @@ class TelegaBot(threading.Thread):
         self.bot = TeleBot(token)
         self.basename = basename
         self.alert = 0
+        self.interval_polling = 0
 
 
     def run(self):
@@ -32,7 +31,9 @@ class TelegaBot(threading.Thread):
                 b1 = types.InlineKeyboardButton('30 секунд', callback_data='pool_1')
                 b2 = types.InlineKeyboardButton('60 секунд', callback_data='pool_2')
                 b3 = types.InlineKeyboardButton('120 секунд', callback_data='pool_3')
+                b4 = types.InlineKeyboardButton('Отключить', callback_data='pool_0')
                 markup.row(b1, b2, b3)
+                markup.row(b4)
             elif markup_type == "chart":
                 b1 = types.InlineKeyboardButton('За последние 24 часа', callback_data='chart_1')
                 b2 = types.InlineKeyboardButton('За последние 12 часов', callback_data='chart_2')
@@ -77,6 +78,11 @@ class TelegaBot(threading.Thread):
             if number in values:
                 self.alert = values[number]
 
+        def set_polling(number):
+            values = {'0': 0, '1': 30, '2': 60, '3': 120}
+            if number in values:
+                self.interval_polling = values[number]
+
         @self.bot.message_handler(commands=['get'])
         def answer(message):
             data = chr.get_data(self.basename)
@@ -102,6 +108,7 @@ class TelegaBot(threading.Thread):
                 # может тут перестать записывать в базу? и ограничить тайминг на 5-10 минут макс.
                 self.bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.id,
                                       text="Опрос с частотой:")
+                set_polling(number)
             elif markup_type == 'chart':
                 self.bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.id,
                                       text="Строим график:")
@@ -119,7 +126,8 @@ class TelegaBot(threading.Thread):
             self.bot.answer_callback_query(call.id)
 
         set_commands()
-        self.bot.polling(none_stop=True)
+        #self.bot.polling(none_stop=True)
+        self.bot.infinity_polling()
 
     def send(self, chat_id, text_):
         self.bot.send_message(chat_id, text=text_, parse_mode='Markdown')
