@@ -20,7 +20,7 @@ class TelegaBot(threading.Thread):
         def set_commands():
             commands = [
                 types.BotCommand(command="/get", description="Получить текущие показания"),
-                types.BotCommand(command="/polling", description="Включить опрос"),
+                types.BotCommand(command="/polling", description="Опрос датчика"),
                 types.BotCommand(command="/chart", description="Построить график"),
                 types.BotCommand(command="/alert", description="Настроить алерт")
             ]

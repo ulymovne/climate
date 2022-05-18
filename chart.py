@@ -4,6 +4,7 @@ import seaborn as sns
 import io
 import sqlite3
 from datetime import datetime
+import sys
 
 
 def get_chart(base:str, date_start:int, date_end:int, title_chart:str):
@@ -63,5 +64,6 @@ def create_db(data_base):
     pass
 
 if __name__ == "__main__":
-    # проверить что базы нет и создать ее, плюс записать в конф.ини название базы
-    create_db()
+    if len(sys.argv)>=3 and sys.argv[1] == '-cr':
+        # проверить что базы нет и создать ее, плюс записать в конф.ини название базы
+        create_db(sys.argv[2])

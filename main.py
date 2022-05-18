@@ -1,7 +1,5 @@
 import configparser
 import threading
-import time
-
 import telega as tg
 import serv
 from alert import alert
@@ -25,7 +23,6 @@ def main():
     tg2 = threading.Thread(target=alert, args=(tg1, conf_parapms['base_name']))
     tg2.start()
     serv1 = serv.Sever(conf_parapms['ip'], conf_parapms['port'], conf_parapms['api_base'], conf_parapms['base_name'], conf_parapms['tg_pol_api'], tg1)
-    #threading.Thread(target=service_polling, args=(tg1, serv1)).start()
     serv1.connect()
 
 

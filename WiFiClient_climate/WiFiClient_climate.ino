@@ -3,37 +3,41 @@
 
 SoftwareSerial mySerial(D3, D4); // D3 - к TX сенсора, D4 - к RX
 
-#ifndef STASSID
-#define STASSID //тут ssid вайфая
-#define STAPSK  //пароль вайфая
-#define PERIOD_SEND 600 //600 // отправляем данные раз в 10 минут
-#define PERIOD_CO2 180 //180 // опрос датчика раз в 3 минут
+#define STASSID //имя вайфай сети
+#define STAPSK //пароль вайфай сети
+#define HOST_IP //адрес сервера
+#define HOST_PORT //порт сервера
+#define PERIOD_SEND 180 //600 // отправляем данные раз в 3 или 10 минут
 #define API_DB //проверочный апи для базы
-#endif
+#define API_POL //проверочный апи для опроса датчика
+
+
+const char* ssid = STASSID;
+const char* password = STAPSK;
+const char* host = HOST_IP;
+const int port = HOST_PORT;
+const String apiDB = API_DB;
+const String api_polling = API_POL;
 
 byte cmd[9] = {0xFF,0x01,0x86,0x00,0x00,0x00,0x00,0x00,0x79}; 
 unsigned char response[9];
 
-const char* ssid     = STASSID;
-const char* password = STAPSK;
+
 String msg = "";
 String msg2 = "";
-bool prov;
+bool get_answer;
 uint32_t curentTime = 0; 
 double curentTime_mod = 0;
 double curentTime_mod_prov = 0;
-
 double curentTime_co2 = 0;
-double curentTime_co2_prov = 0;
+double curentTime_co2_get_prov = 0;
 int mean_value[3];
 
 
-const char* host = // адрес сервера
-const uint16_t port = // порт сервера
-
 void setup() {
+  
   Serial.begin(115200);
-  delay(120000); // задержка для прогрева датчика, нужно 2 минуты = 120000
+  delay(60000); // задержка для прогрева датчика, нужно около 2 минут = 120000
   mySerial.begin(9600);
   
   Serial.println();
@@ -60,111 +64,171 @@ void setup() {
   mean_value[2] = first_value_co2;
 }
 
+
 void loop() {
   curentTime = round(millis()/1000);
   curentTime_mod = curentTime / PERIOD_SEND;
-  curentTime_co2 = curentTime / PERIOD_CO2;
+  int periodCo2 = round(PERIOD_SEND/3);
+  curentTime_co2 = curentTime / periodCo2;
+
+  //========= раз в несколькок секунд (PERIOD_SEND) соединяемся с сервером и отправляем показания
   
   if ( (curentTime % PERIOD_SEND == 0) & (curentTime_mod != curentTime_mod_prov) ) {
     curentTime_mod_prov = curentTime_mod;
-    Serial.println("Zahod time:  " + String(curentTime));
+   
+    connection();
     
-    int co2_value = meanSensorValue();
-    
-    Serial.print("connecting to ");
-    Serial.print(host);
-    Serial.print(':');
-    Serial.println(port);
-  
-    // Use WiFiClient class to create TCP connections
-    WiFiClient client;
-    if (!client.connect(host, port)) {
-      Serial.println("connection failed");
-      delay(5000);
-      return;
-    }
-  
-    // This will send a string to the server
-      
-    // wait for data to be available
-    unsigned long timeout = millis();
-    while (client.available() == 0) {
-      if (millis() - timeout > 5000) {
-        Serial.println("=== Client Timeout !");
-        client.stop();
-        delay(10000);
-        return;
-      }
-    }
-  
-    if (client.connected()) {
-      Serial.println("=== Connected - OK");
-    }
-      
-    msg = "";
-    
-    
-    while (client.available()) {
-      char ch = static_cast<char>(client.read());
-      msg = msg + String(ch);
-          }
-    if (msg == "connected_ok") {
-      prov = true;
-      unsigned long timeoutAnswer = millis();
-      
-      client.print(API_DB + ";" + String(co2_value));
-      delay(300);
-      
-      while (prov){
-        if (millis()-timeoutAnswer < 3000){
-          msg2 = "";
-          while (client.available()) {
-            char ch = static_cast<char>(client.read());
-            msg2 = msg2 + String(ch);
-            }
-          Serial.println("msg2 = " + msg2);
-          if (msg2 == "getted"){
-            prov = false;
-            Serial.println("=== Data send - ok"); 
-        
-          }
-          else {
-            client.print(API_DB + ";" + String(co2_value));
-            delay(300);
-          }
-          
-        }
-        
-      }
-     
-    }
-      
-  
-    // Close the connection
-    Serial.println();
-    Serial.println("Closing connection");
-    client.stop();
   }
-  //раз в несколькок секунд=PERIOD_CO2 берем показания и записываем их в массив
-  if ( (curentTime % PERIOD_CO2 == 0) & (curentTime_co2 != curentTime_co2_prov) ) {
-    curentTime_co2_prov = curentTime_co2;
-    //Serial.println("Pokazania datchika UP:  " + String(curentTime));
-    int co2 = readSensor();
-    if (co2 == 0){
-      delay(2000);
-      co2 = readSensor();
-    }
-    if (co2 == 0){
-      co2 = meanSensorValue();
-    }
-    mean_value[0] = mean_value[1];
-    mean_value[1] = mean_value[2];
-    mean_value[2] = co2;
+  
+  //========= раз в несколькок секунд (periodCo2) берем показания и записываем их в массив
+  
+  if ( (curentTime % periodCo2 == 0) & (curentTime_co2 != curentTime_co2_get_prov) ) {
+    curentTime_co2_get_prov = curentTime_co2;
+
+    update_co2();
     
-    //Serial.println(mean_value[2]);
+    
   }  
 }
 
+
+void update_co2(){
+  int co2 = readSensor();
+  if (co2 == 0){
+    delay(2000);
+    co2 = readSensor();
+    }
+  if (co2 == 0){
+    co2 = meanSensorValue();
+    }
+  mean_value[0] = mean_value[1];
+  mean_value[1] = mean_value[2];
+  mean_value[2] = co2;
+  //Serial.println(mean_value[2]);
+}
+
+
+void connection(){
+    
+  Serial.print("connecting to ");
+  Serial.print(host);
+  Serial.print(':');
+  Serial.println(port);
+
+  // Use WiFiClient class to create TCP connections
+  WiFiClient client;
+  if (!client.connect(host, port)) {
+    Serial.println("connection failed");
+    delay(5000);
+    return;
+    }
+
+  // wait for data to be available
+  unsigned long timeout = millis();
+  while (client.available() == 0) {
+    if (millis() - timeout > 5000) {
+      Serial.println("=== Client Timeout !");
+      client.stop();
+      delay(10000);
+      return;
+      }
+    }
+
+  if (client.connected()) {
+    Serial.println("Server connected. Begin transfer");
+    }
+    
+  data_sharing(client);
+
+  // Close the connection
+  Serial.println();
+  Serial.println("Closing connection");
+  client.stop();
+  
+  
+}
+
+
+void data_sharing(WiFiClient client){
+  
+  
+  msg = "";
+  while (client.available()) {
+    char ch = static_cast<char>(client.read());
+    msg = msg + String(ch);
+    }
+  if (msg.startsWith("connected")) {
+    msg.remove(0, 10);
+       
+    if (msg == "0"){   // только отправить данные в БД
+      
+        int co2_value = meanSensorValue();
+        get_answer = true;
+        
+        unsigned long timeoutAnswer = millis();
+        client.print(apiDB+";"+String(co2_value));
+        delay(500);
+        
+        while (get_answer){
+          if (millis()-timeoutAnswer < 3000){
+            msg2 = "";
+            while (client.available()) {
+              char ch = static_cast<char>(client.read());
+              msg2 = msg2 + String(ch);
+              }
+            Serial.println("msg2 = " + msg2);
+            if (msg2 == "getted"){
+              get_answer = false;
+              Serial.println("=== Data send - ok"); 
+              }
+            else {
+              client.print(apiDB+";"+String(co2_value));
+              delay(500);
+              }
+            }
+          }
+        }
+    else{ // отправляем данные в течении 3 минут, с интервалом заданным в msg
+        unsigned long cur_time = millis();
+        int time_ = msg.toInt()*1000;
+        bool next_pol = true;
+        while ((millis()-cur_time < 180000)&&(next_pol)){
+          int co2_value = readSensor();
+          get_answer = true;
+          unsigned long timeoutAnswer = millis();
+          client.print(api_polling+";"+String(co2_value));
+          delay(500);
+          
+          while (get_answer){
+            if (millis()-timeoutAnswer < 3000){
+              msg2 = "";
+              while (client.available()) {
+                char ch = static_cast<char>(client.read());
+                msg2 = msg2 + String(ch);
+                }
+              Serial.println("msg2 = " + msg2);
+              if (msg2.startsWith("getted")){
+                get_answer = false;
+                Serial.println("=== Data send - ok"); 
+                }
+              else if (msg2.startsWith("stop")){
+                next_pol = false;
+                get_answer = false;
+                }
+              else {
+                client.print(api_polling+";"+String(co2_value));
+                delay(500);
+                }
+              }
+            }
+          delay(time_);
+          }
+        client.print("disconnect");
+        delay(300);
+        }
+    }
+  
+}
 
 int readSensor() {
     mySerial.write(cmd, 9);
@@ -194,6 +258,7 @@ int readSensor() {
     }
    return ppm;
 }
+
 
 int meanSensorValue() {
   int mean_ = round((mean_value[0] + mean_value[1] + mean_value[2])/3);

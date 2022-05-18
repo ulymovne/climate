@@ -61,6 +61,7 @@ class Sever:
                         print('Error in data:\n\t', e)
             else:
                 print('client disconnected')
+                user.close()
 
     def sender(self, user, text):
         user.send(text.encode('utf-8'))
