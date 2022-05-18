@@ -22,15 +22,19 @@ class Sever:
             self.lissen(user)
 
     def lissen(self, user):
-        if self.tg.interval_polling == 0:
+        curentInterval = self.tg.interval_polling
+        if curentInterval == 0:
             self.sender(user, 'connected_0')
         else:
-            self.sender(user, 'connected_'+str(self.tg.interval_polling))
+            self.sender(user, 'connected_'+str(curentInterval))
         is_work = True
         while is_work:
             try:
                 data = user.recv(1024)
-                self.sender(user, 'getted')
+                if self.tg.interval_polling == curentInterval:
+                    self.sender(user, 'getted')
+                else:
+                    self.sender(user, 'stop')
             except Exception as e:
                 data = ''
                 is_work = False
