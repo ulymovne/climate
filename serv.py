@@ -1,3 +1,4 @@
+import time
 from socket import *
 import chart as chr
 
@@ -51,6 +52,7 @@ class Sever:
                             is_work = False
                         elif msg[0] == self.tg_pol_api:
                             self.tg.send(self.tg.chat_id, msg[1])
+                        time.sleep(1)
                     except Exception as e:
                         print('Error in data:\n\t', e)
             else:
