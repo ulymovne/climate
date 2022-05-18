@@ -2,14 +2,15 @@ from socket import *
 import chart as chr
 
 class Sever:
-    def __init__(self, ip, port, api_base, base_name):
+    def __init__(self, ip, port, api_base, base_name, tg_pol_api, tg):
         self.ser = socket(AF_INET, SOCK_STREAM)
         self.api_base = api_base
         self.base_name = base_name
         self.ser.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         self.ser.bind((ip, port))
         self.ser.listen(3)
-        self.intrval_polling = None
+        self.tg_pol_api = tg_pol_api
+        self.tg = tg
 
     def connect(self):
         while True:
@@ -20,11 +21,10 @@ class Sever:
             self.lissen(user)
 
     def lissen(self, user):
-        if self.intrval_polling is None:
-            self.sender(user, 'connected_ok')
+        if self.tg.interval_polling == 0:
+            self.sender(user, 'connected_0')
         else:
-            self.sender(user, 'connected_'+str(self.intrval_polling))
-            self.intrval_polling = None
+            self.sender(user, 'connected_'+str(self.tg.interval_polling))
         is_work = True
         while is_work:
             try:
@@ -38,17 +38,23 @@ class Sever:
             if len(data):
                 msg_data = data.decode('utf-8')
                 print(msg_data)
-                msg = msg_data.split(';')
-                try:
-                    if msg[0] == self.api_base:
-                        chr.add_db(self.base_name, value=int(msg[1]))
-                        is_work = False
-                except Exception as e:
-                    print('Error in data:\n\t', e)
 
+                if msg_data == "disconnect":
+                    user.close()
+                    is_work = False
+                else:
+                    try:
+                        msg = msg_data.split(';')
+                        if msg[0] == self.api_base:
+                            chr.add_db(self.base_name, value=int(msg[1]))
+                            user.close()
+                            is_work = False
+                        elif msg[0] == self.tg_pol_api:
+                            self.tg.send(self.tg.chat_id, msg[1])
+                    except Exception as e:
+                        print('Error in data:\n\t', e)
             else:
                 print('client disconnected')
-                is_work = False
 
     def sender(self, user, text):
         user.send(text.encode('utf-8'))

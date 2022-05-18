@@ -12,6 +12,7 @@ class TelegaBot(threading.Thread):
         self.basename = basename
         self.alert = 0
         self.interval_polling = 0
+        self.chat_id = 0
 
 
     def run(self):
@@ -28,9 +29,9 @@ class TelegaBot(threading.Thread):
         def get_markup(markup_type: str):
             markup = types.InlineKeyboardMarkup()
             if markup_type == "pool":
-                b1 = types.InlineKeyboardButton('30 секунд', callback_data='pool_1')
-                b2 = types.InlineKeyboardButton('60 секунд', callback_data='pool_2')
-                b3 = types.InlineKeyboardButton('120 секунд', callback_data='pool_3')
+                b1 = types.InlineKeyboardButton('10 секунд', callback_data='pool_1')
+                b2 = types.InlineKeyboardButton('20 секунд', callback_data='pool_2')
+                b3 = types.InlineKeyboardButton('30 секунд', callback_data='pool_3')
                 b4 = types.InlineKeyboardButton('Отключить', callback_data='pool_0')
                 markup.row(b1, b2, b3)
                 markup.row(b4)
@@ -79,7 +80,7 @@ class TelegaBot(threading.Thread):
                 self.alert = values[number]
 
         def set_polling(number):
-            values = {'0': 0, '1': 30, '2': 60, '3': 120}
+            values = {'0': 0, '1': 10, '2': 20, '3': 30}
             if number in values:
                 self.interval_polling = values[number]
 
@@ -91,6 +92,7 @@ class TelegaBot(threading.Thread):
 
         @self.bot.message_handler(commands=['polling'])
         def answer(message):
+            self.chat_id = message.chat.id
             self.bot.send_message(message.chat.id, 'Частота опроса:', reply_markup=get_markup('pool'))
 
         @self.bot.message_handler(commands=['chart'])
@@ -99,6 +101,7 @@ class TelegaBot(threading.Thread):
 
         @self.bot.message_handler(commands=['alert'])
         def answer(message):
+            self.chat_id = message.chat.id
             self.bot.send_message(message.chat.id, f'Выберете порог. Сейчас установлено: {self.alert}', reply_markup=get_markup('alert'))
 
         @self.bot.callback_query_handler(func=lambda call: True)
