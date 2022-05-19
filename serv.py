@@ -21,6 +21,7 @@ class Sever:
             print('Client connected:\n\t', addr[0], ':', addr[1])
             self.lissen(user)
 
+
     def lissen(self, user):
         curentInterval = self.tg.interval_polling
         if curentInterval == 0:
@@ -45,14 +46,12 @@ class Sever:
                 print(msg_data)
 
                 if msg_data == "disconnect":
-                    user.close()
                     is_work = False
                 else:
                     try:
                         msg = msg_data.split(';')
                         if msg[0] == self.api_base:
                             chr.add_db(self.base_name, value=int(msg[1]))
-                            user.close()
                             is_work = False
                         elif msg[0] == self.tg_pol_api:
                             self.tg.send(self.tg.chat_id, msg[1])
@@ -61,7 +60,7 @@ class Sever:
                         print('Error in data:\n\t', e)
             else:
                 print('client disconnected')
-                user.close()
+        user.close()
 
     def sender(self, user, text):
         user.send(text.encode('utf-8'))
