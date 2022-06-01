@@ -54,7 +54,8 @@ class Sever:
                             chr.add_db(self.base_name, value=int(msg[1]))
                             is_work = False
                         elif msg[0] == self.tg_pol_api:
-                            self.tg.send(self.tg.chat_id, msg[1])
+                            message = f"CO2:  *{msg[1]}*\nHCHO:  *{msg[2]}*"
+                            self.tg.send(self.tg.chat_id, message)
                         time.sleep(1)
                     except Exception as e:
                         print('Error in data:\n\t', e)

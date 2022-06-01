@@ -11,7 +11,7 @@ soc.connect((conf_parapms['ip'], conf_parapms['port']))
 
 try:
     msg = soc.recv(1024).decode('utf-8')
-    if msg == 'connected_ok':
+    if msg == 'connected_0':
         print('Connected')
         is_work = True
         while is_work:
