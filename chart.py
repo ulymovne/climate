@@ -35,11 +35,11 @@ def get_chart(base:str, date_start:int, date_end:int, title_chart:str):
         return 'ошибка'
 
 def get_data(base:str):
-    value = [('0', 0)]
+    value = [('0', 0, 0)]
     try:
         with sqlite3.connect(base) as db:
             cur = db.cursor()
-            query = f""" SELECT date_str, co2 FROM co_data ORDER BY id DESC LIMIT 1 """
+            query = f""" SELECT date_str, co2, hcho FROM co_data ORDER BY id DESC LIMIT 1 """
             cur.execute(query)
             value = cur.fetchall()
 
@@ -47,13 +47,13 @@ def get_data(base:str):
         print('Get data - connection error:\n\t', e)
     return value[0]
 
-def add_db(data_base:str, value=0):
+def add_db(data_base:str, value:list):
     try:
         with sqlite3.connect(data_base) as db:
             cur = db.cursor()
             date_u = round(datetime.now().timestamp())
             date_str = datetime.fromtimestamp(date_u).strftime("%d.%m.%y %H:%M")
-            query = f""" INSERT INTO co_data (date_str, date_u, co2) VALUES ("{date_str}",{date_u}, {value}) """
+            query = f""" INSERT INTO co_data (date_str, date_u, co2, hcho) VALUES ("{date_str}",{date_u}, {value[0]}, {value[1]}) """
             cur.execute(query)
             print('Data updated')
 
@@ -61,7 +61,26 @@ def add_db(data_base:str, value=0):
         print('Add to db - connection error:\n\t', e)
 
 def create_db(data_base):
-    pass
+    try:
+        with sqlite3.connect(data_base) as db:
+            cur = db.cursor()
+            cur.execute("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='co_data'")
+            val = cur.fetchall()
+            if val[0][0] == 0:
+                query = """CREATE TABLE "co_data" (
+                    "id"	INTEGER PRIMARY KEY AUTOINCREMENT,
+                    "date_str"	TEXT,
+                    "co2"	INTEGER,
+                    "date_u"	INTEGER,
+                    "hcho"	REAL
+                    );
+                    """
+                cur.execute(query)
+                print("The database created")
+            else:
+                print("The database already exists")
+    except Exception as e:
+        print("Error create db: \n\t", e)
 
 if __name__ == "__main__":
     if len(sys.argv)>=3 and sys.argv[1] == '-cr':

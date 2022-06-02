@@ -87,7 +87,7 @@ class TelegaBot(threading.Thread):
         @self.bot.message_handler(commands=['get'])
         def answer(message):
             data = chr.get_data(self.basename)
-            self.bot.send_message(message.chat.id, data[0] + ", показания CO2: *" + str(data[1]) + "*",
+            self.bot.send_message(message.chat.id, data[0] + "\nУровень CO2: *" + str(data[1]) + "*" + "\nУровень HCHO: *" + str(data[2]) + "*",
                              parse_mode='Markdown')
 
         @self.bot.message_handler(commands=['polling'])

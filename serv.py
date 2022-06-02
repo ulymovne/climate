@@ -51,7 +51,7 @@ class Sever:
                     try:
                         msg = msg_data.split(';')
                         if msg[0] == self.api_base:
-                            chr.add_db(self.base_name, value=int(msg[1]))
+                            chr.add_db(self.base_name, value=msg[1:])
                             is_work = False
                         elif msg[0] == self.tg_pol_api:
                             message = f"CO2:  *{msg[1]}*\nHCHO:  *{msg[2]}*"
