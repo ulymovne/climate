@@ -61,6 +61,7 @@ class Sever:
                         print('Error in data:\n\t', e)
             else:
                 print('client disconnected')
+                is_work = False
         user.close()
 
     def sender(self, user, text):
