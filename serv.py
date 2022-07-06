@@ -16,6 +16,7 @@ class Sever:
     def connect(self):
         while True:
             user, addr = self.ser.accept()
+            user.settimeout(60)
 
             # !!!!!!!! записать в логи кто подключился
             print('Client connected:\n\t', addr[0], ':', addr[1])
