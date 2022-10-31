@@ -6,7 +6,7 @@ import sqlite3
 from datetime import datetime
 import sys
 
-
+# построить график с показаниями CO2 за период
 def get_chart(base:str, date_start:int, date_end:int, title_chart:str):
     try:
         with sqlite3.connect(base) as db:
@@ -84,5 +84,5 @@ def create_db(data_base):
 
 if __name__ == "__main__":
     if len(sys.argv)>=3 and sys.argv[1] == '-cr':
-        # проверить что базы нет и создать ее, плюс записать в конф.ини название базы
+        # проверить что базы нет и создать ее, плюс записать в conf.ini название базы
         create_db(sys.argv[2])

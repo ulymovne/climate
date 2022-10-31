@@ -1,0 +1,10 @@
+dockerfile
+virt
+.idea
+__pycache__
+log
+WiFiClient_climate
+climate_co3.db
+test.py
+RE*
+.git*
