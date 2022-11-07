@@ -4,8 +4,10 @@ virt
 __pycache__
 log
 WiFiClient_climate
-climate_co3.db
+config
+*jpg
 test.py
 RE*
 .git*
-config
+docker-compose*
+
