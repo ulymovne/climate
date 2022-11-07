@@ -6,4 +6,5 @@ log/
 climate_co2.db
 climate_co3.db
 test.py
+docker-compose.yaml
 
